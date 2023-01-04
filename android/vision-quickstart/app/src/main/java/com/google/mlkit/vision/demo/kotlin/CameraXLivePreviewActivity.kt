@@ -264,12 +264,15 @@ class CameraXLivePreviewActivity :
           }
           DASHCAM_ML -> {
             Log.i(TAG, "Dashcam ML")
+            // Pose
             val poseDetectorOptions = PreferenceUtils.getPoseDetectorOptionsForLivePreview(this)
             val shouldShowInFrameLikelihood =
               PreferenceUtils.shouldShowPoseDetectionInFrameLikelihoodLivePreview(this)
             val visualizeZ = PreferenceUtils.shouldPoseDetectionVisualizeZ(this)
             val rescaleZ = PreferenceUtils.shouldPoseDetectionRescaleZForVisualization(this)
             val runClassification = PreferenceUtils.shouldPoseDetectionRunClassification(this)
+            // Object Detection
+            val objectDetectorOptions = PreferenceUtils.getObjectDetectorOptionsForLivePreview(this)
             DashcamMLProcessor(
               this,
               poseDetectorOptions,
@@ -277,7 +280,8 @@ class CameraXLivePreviewActivity :
               visualizeZ,
               rescaleZ,
               runClassification,
-              /* isStreamMode = */ true
+              /* isStreamMode = */ true,
+              objectDetectorOptions
             )
           }
           OBJECT_DETECTION_CUSTOM -> {

@@ -19,32 +19,40 @@ package com.google.mlkit.vision.demo.kotlin.dashcam
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.odml.image.MlImage
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.java.posedetector.classification.PoseClassifierProcessor
 import com.google.mlkit.vision.demo.kotlin.VisionProcessorBase
+import com.google.mlkit.vision.objects.ObjectDetection
+import com.google.mlkit.vision.objects.ObjectDetector
+import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import com.google.mlkit.vision.pose.Pose
 import com.google.mlkit.vision.pose.PoseDetection
 import com.google.mlkit.vision.pose.PoseDetector
 import com.google.mlkit.vision.pose.PoseDetectorOptionsBase
-import java.util.ArrayList
+import java.io.IOException
+import java.lang.Thread
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+
 
 /** A processor to run pose detector. */
 class DashcamMLProcessor(
   private val context: Context,
-  options: PoseDetectorOptionsBase,
+  poseOptions: PoseDetectorOptionsBase,
   private val showInFrameLikelihood: Boolean,
   private val visualizeZ: Boolean,
   private val rescaleZForVisualization: Boolean,
   private val bPoseClassification: Boolean,
-  private val isStreamMode: Boolean
+  private val isStreamMode: Boolean,
+  odOptions: ObjectDetectorOptions
 ) : VisionProcessorBase<DashcamMLProcessor.CompoundDtection>(context) {
 
-  private val detector: PoseDetector
-  private val classificationExecutor: Executor
+  private val poseDetector: PoseDetector
+  private val odDetector: ObjectDetector
+  private val poseClassificationExecutor: Executor
 
   private var poseClassifierProcessor: PoseClassifierProcessor? = null
 
@@ -52,20 +60,33 @@ class DashcamMLProcessor(
   class CompoundDtection(val pose: Pose, val classificationResult: List<String>)
 
   init {
-    detector = PoseDetection.getClient(options)
-    classificationExecutor = Executors.newSingleThreadExecutor()
+    poseDetector = PoseDetection.getClient(poseOptions)
+    odDetector = ObjectDetection.getClient(odOptions)
+    poseClassificationExecutor = Executors.newSingleThreadExecutor()
   }
 
   override fun stop() {
     super.stop()
-    detector.close()
+    try {
+      poseDetector.close()
+      odDetector.close()
+    } catch (e: IOException) {
+      Log.e(
+        TAG,
+        "Exception thrown while trying to close detector!",
+        e
+      )
+    }
+
   }
 
   override fun detectInImage(image: InputImage): Task<CompoundDtection> {
-    return detector
+    Log.e("aaaa", "11111111111111")
+//    return odDetector.process(image)
+    return poseDetector
       .process(image)
       .continueWith(
-        classificationExecutor,
+        poseClassificationExecutor,
         { task ->
           val pose = task.getResult()
           var classificationResult: List<String> = ArrayList()
@@ -81,22 +102,42 @@ class DashcamMLProcessor(
   }
 
   override fun detectInImage(image: MlImage): Task<CompoundDtection> {
-    return detector
-      .process(image)
-      .continueWith(
-        classificationExecutor,
-        { task ->
-          val pose = task.getResult()
-          var classificationResult: List<String> = ArrayList()
-          if (bPoseClassification) {
-            if (poseClassifierProcessor == null) {
-              poseClassifierProcessor = PoseClassifierProcessor(context, isStreamMode)
-            }
-            classificationResult = poseClassifierProcessor!!.getPoseResult(pose)
+    //to return Task Type
+    val taskCompletionSource = TaskCompletionSource<CompoundDtection>()
+    //pose
+    lateinit var pose: Pose
+    var classificationResult: List<String> = ArrayList()
+
+    val task1 = poseDetector.process(image).continueWith(
+      poseClassificationExecutor,
+      { task ->
+        pose = task.getResult()
+
+        if (bPoseClassification) {
+          if (poseClassifierProcessor == null) {
+            poseClassifierProcessor = PoseClassifierProcessor(context, isStreamMode)
           }
-          CompoundDtection(pose, classificationResult)
+          classificationResult = poseClassifierProcessor!!.getPoseResult(pose)
         }
-      )
+        CompoundDtection(pose, classificationResult)
+      }
+    )
+    Log.e("aaaa", "333333")
+    for (t in listOf(task1)){
+      while (!t.isComplete){
+        try {
+            Log.e("xxxxx", t.isComplete.toString())
+            Thread.sleep(5)
+        }catch (e: Exception){
+//          taskCompletionSource.setException(e)
+        }
+      }
+    }
+//    Log.e("aaaa", "4444444444444")
+//    Log.e("aaaa", task1.getResult().toString())
+    taskCompletionSource.setResult(CompoundDtection(pose, classificationResult))
+    return taskCompletionSource.getTask()
+
   }
 
   override fun onSuccess(
@@ -125,6 +166,7 @@ class DashcamMLProcessor(
   }
 
   companion object {
-    private val TAG = "PoseDetectorProcessor"
+    private val TAG = "DashcamMLProcessor"
   }
+
 }
