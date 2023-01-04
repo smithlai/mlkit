@@ -49,6 +49,7 @@ import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.R
 import com.google.mlkit.vision.demo.VisionImageProcessor
 import com.google.mlkit.vision.demo.kotlin.barcodescanner.BarcodeScannerProcessor
+import com.google.mlkit.vision.demo.kotlin.dashcam.DashcamMLProcessor
 import com.google.mlkit.vision.demo.kotlin.facedetector.FaceDetectorProcessor
 import com.google.mlkit.vision.demo.kotlin.labeldetector.LabelDetectorProcessor
 import com.google.mlkit.vision.demo.kotlin.objectdetector.ObjectDetectorProcessor
@@ -104,6 +105,7 @@ class CameraXLivePreviewActivity :
     val spinner = findViewById<Spinner>(R.id.spinner)
     val options: MutableList<String> = ArrayList()
     options.add(OBJECT_DETECTION)
+    options.add(DASHCAM_ML)
     options.add(OBJECT_DETECTION_CUSTOM)
     options.add(CUSTOM_AUTOML_OBJECT_DETECTION)
     options.add(FACE_DETECTION)
@@ -260,6 +262,24 @@ class CameraXLivePreviewActivity :
             val objectDetectorOptions = PreferenceUtils.getObjectDetectorOptionsForLivePreview(this)
             ObjectDetectorProcessor(this, objectDetectorOptions)
           }
+          DASHCAM_ML -> {
+            Log.i(TAG, "Dashcam ML")
+            val poseDetectorOptions = PreferenceUtils.getPoseDetectorOptionsForLivePreview(this)
+            val shouldShowInFrameLikelihood =
+              PreferenceUtils.shouldShowPoseDetectionInFrameLikelihoodLivePreview(this)
+            val visualizeZ = PreferenceUtils.shouldPoseDetectionVisualizeZ(this)
+            val rescaleZ = PreferenceUtils.shouldPoseDetectionRescaleZForVisualization(this)
+            val runClassification = PreferenceUtils.shouldPoseDetectionRunClassification(this)
+            DashcamMLProcessor(
+              this,
+              poseDetectorOptions,
+              shouldShowInFrameLikelihood,
+              visualizeZ,
+              rescaleZ,
+              runClassification,
+              /* isStreamMode = */ true
+            )
+          }
           OBJECT_DETECTION_CUSTOM -> {
             Log.i(TAG, "Using Custom Object Detector (with object labeler) Processor")
             val localModel =
@@ -400,6 +420,7 @@ class CameraXLivePreviewActivity :
   companion object {
     private const val TAG = "CameraXLivePreview"
     private const val OBJECT_DETECTION = "Object Detection"
+    private const val DASHCAM_ML = "Dashcam ML"
     private const val OBJECT_DETECTION_CUSTOM = "Custom Object Detection"
     private const val CUSTOM_AUTOML_OBJECT_DETECTION = "Custom AutoML Object Detection (Flower)"
     private const val FACE_DETECTION = "Face Detection"
