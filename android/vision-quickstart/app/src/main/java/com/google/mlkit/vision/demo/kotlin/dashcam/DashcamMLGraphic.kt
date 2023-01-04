@@ -63,6 +63,9 @@ internal constructor(
   }
 
   override fun draw(canvas: Canvas) {
+    drawPose(canvas)
+  }
+  internal fun drawPose(canvas: Canvas){
     val landmarks = pose.allPoseLandmarks
     if (landmarks.isEmpty()) {
       return
@@ -225,7 +228,7 @@ internal constructor(
   }
 
   companion object {
-
+    // Pose
     private val DOT_RADIUS = 8.0f
     private val IN_FRAME_LIKELIHOOD_TEXT_SIZE = 30.0f
     private val STROKE_WIDTH = 10.0f
