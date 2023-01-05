@@ -23,8 +23,9 @@ import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.odml.image.MlImage
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.demo.GraphicOverlay
-import com.google.mlkit.vision.demo.java.posedetector.classification.PoseClassifierProcessor
 import com.google.mlkit.vision.demo.kotlin.VisionProcessorBase
+import com.google.mlkit.vision.demo.kotlin.dashcam.poseclassification.PoseClassifierProcessor
+import com.google.mlkit.vision.objects.DetectedObject
 import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.ObjectDetector
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
@@ -57,7 +58,7 @@ class DashcamMLProcessor(
   private var poseClassifierProcessor: PoseClassifierProcessor? = null
 
   /** Internal class to hold Pose and classification results. */
-  class CompoundDtection(val pose: Pose, val classificationResult: List<String>)
+  class CompoundDtection(val pose: Pose, val classificationResult: List<String>, val detectedObjects: List<DetectedObject>)
 
   init {
     poseDetector = PoseDetection.getClient(poseOptions)
@@ -81,37 +82,26 @@ class DashcamMLProcessor(
   }
 
   override fun detectInImage(image: InputImage): Task<CompoundDtection> {
-    Log.e("aaaa", "11111111111111")
-//    return odDetector.process(image)
-    return poseDetector
-      .process(image)
-      .continueWith(
-        poseClassificationExecutor,
-        { task ->
-          val pose = task.getResult()
-          var classificationResult: List<String> = ArrayList()
-          if (bPoseClassification) {
-            if (poseClassifierProcessor == null) {
-              poseClassifierProcessor = PoseClassifierProcessor(context, isStreamMode)
-            }
-            classificationResult = poseClassifierProcessor!!.getPoseResult(pose)
-          }
-          CompoundDtection(pose, classificationResult)
-        }
-      )
+    val task1 = poseDetector.process(image)
+    val task2 = odDetector.process(image)
+    return waitTasks(task1, task2)
   }
 
   override fun detectInImage(image: MlImage): Task<CompoundDtection> {
-    //to return Task Type
-    val taskCompletionSource = TaskCompletionSource<CompoundDtection>()
-    //pose
-    lateinit var pose: Pose
-    var classificationResult: List<String> = ArrayList()
 
-    val task1 = poseDetector.process(image).continueWith(
+    val task1 = poseDetector.process(image)
+    val task2 = odDetector.process(image)
+    return waitTasks(task1, task2)
+  }
+  private fun waitTasks(taskPose: Task<Pose>, taskOD: Task<List<DetectedObject>>) : Task<CompoundDtection>{
+    //to return Task Type for detectInImage and processImageProxy
+    val taskCompletionSource = TaskCompletionSource<CompoundDtection>()
+
+    var classificationResult: List<String> = ArrayList()
+    taskPose.continueWith(
       poseClassificationExecutor,
       { task ->
-        pose = task.getResult()
+        val pose = task.getResult()
 
         if (bPoseClassification) {
           if (poseClassifierProcessor == null) {
@@ -119,41 +109,45 @@ class DashcamMLProcessor(
           }
           classificationResult = poseClassifierProcessor!!.getPoseResult(pose)
         }
-        CompoundDtection(pose, classificationResult)
+        pose
       }
     )
-    Log.e("aaaa", "333333")
-    for (t in listOf(task1)){
+
+
+    for ((k,t) in mapOf("pose" to taskPose,"OD" to taskOD)){
       while (!t.isComplete){
         try {
-            Log.e("xxxxx", t.isComplete.toString())
-            Thread.sleep(5)
+//          Log.e("xxxxx", k + "... waiting complete")
+          Thread.sleep(5)
         }catch (e: Exception){
 //          taskCompletionSource.setException(e)
         }
       }
     }
-//    Log.e("aaaa", "4444444444444")
-//    Log.e("aaaa", task1.getResult().toString())
-    taskCompletionSource.setResult(CompoundDtection(pose, classificationResult))
+    val pose = taskPose.getResult() //<Pose>
+    val detectedObjects = taskOD.getResult() //<List<DetectedObject>>
+    taskCompletionSource.setResult(CompoundDtection(pose, classificationResult, detectedObjects))
     return taskCompletionSource.getTask()
 
   }
 
   override fun onSuccess(
-    poseWithClassification: CompoundDtection,
+    results: CompoundDtection,
     graphicOverlay: GraphicOverlay
   ) {
     graphicOverlay.add(
-      DashcamMLGraphic(
+      PoseGraphic(
         graphicOverlay,
-        poseWithClassification.pose,
+        results.pose,
         showInFrameLikelihood,
         visualizeZ,
         rescaleZForVisualization,
-        poseWithClassification.classificationResult
+        results.classificationResult
       )
     )
+    for (detectedObject in results.detectedObjects) {
+      graphicOverlay.add(ObjectGraphic(graphicOverlay, detectedObject))
+    }
   }
 
   override fun onFailure(e: Exception) {
