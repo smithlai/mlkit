@@ -24,8 +24,10 @@ import com.google.android.odml.image.MlImage
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.kotlin.VisionProcessorBase
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.MoveNetMultiPose
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.Type
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Device
 import com.google.mlkit.vision.demo.kotlin.dashcam.poseclassification.PoseClassifierProcessor
-import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.facemesh.FaceMesh
 import com.google.mlkit.vision.facemesh.FaceMeshDetection
 import com.google.mlkit.vision.facemesh.FaceMeshDetector
@@ -38,6 +40,9 @@ import com.google.mlkit.vision.pose.Pose
 import com.google.mlkit.vision.pose.PoseDetection
 import com.google.mlkit.vision.pose.PoseDetector
 import com.google.mlkit.vision.pose.PoseDetectorOptionsBase
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.support.image.MlImageAdapter
+import org.tensorflow.lite.support.image.TensorImage
 import java.io.IOException
 import java.lang.Thread
 import java.util.concurrent.Executor
@@ -60,6 +65,7 @@ class DashcamMLProcessor(
   private val poseDetector: PoseDetector
   private val odDetector: ObjectDetector
   private val fmDetector: FaceMeshDetector
+  private val movenetDetector: MoveNetMultiPose
   private val poseClassificationExecutor: Executor
 
   private var poseClassifierProcessor: PoseClassifierProcessor? = null
@@ -70,11 +76,22 @@ class DashcamMLProcessor(
   class CompoundDtection(val pose: Pose, val classificationResult: List<String>, val detectedObjects: List<DetectedObject>, val detectedFaceMeshs: List<FaceMesh>)
 
   init {
+    // (MediaPipe Blazepose) https://developers.google.com/ml-kit/vision/pose-detection#under_the_hood
     poseDetector = PoseDetection.getClient(poseOptions)
     odDetector = ObjectDetection.getClient(odOptions)
     poseClassificationExecutor = Executors.newSingleThreadExecutor()
 
+    // https://developers.google.com/ml-kit/vision/face-mesh-detection/concepts
     fmDetector = FaceMeshDetection.getClient(fmOptions)
+//    if (device == Device.GPU) {
+//      showToast(getString(R.string.tfe_pe_gpu_error))
+//    }
+//    showTracker(true)
+    movenetDetector = MoveNetMultiPose.create(
+      context,
+      Device.GPU,
+      Type.Dynamic
+    )
 
   }
 
@@ -84,6 +101,7 @@ class DashcamMLProcessor(
       poseDetector.close()
       odDetector.close()
       fmDetector.close()
+      movenetDetector.close()
     } catch (e: IOException) {
       Log.e(
         TAG,
@@ -98,6 +116,8 @@ class DashcamMLProcessor(
     val task1 = poseDetector.process(image)
     val task2 = odDetector.process(image)
     val task3 = fmDetector.process(image)
+
+    val tensorImage = TensorImage.fromBitmap(image.bitmapInternal)
     return waitTasks(task1, task2, task3)
   }
 
@@ -106,6 +126,7 @@ class DashcamMLProcessor(
     val task1 = poseDetector.process(image)
     val task2 = odDetector.process(image)
     val task3 = fmDetector.process(image)
+    val tensorImage = MlImageAdapter.createTensorImageFrom(image)
     return waitTasks(task1, task2, task3)
   }
   private fun waitTasks(taskPose: Task<Pose>, taskOD: Task<List<DetectedObject>>, taskFM:Task<List<FaceMesh>>) : Task<CompoundDtection>{
