@@ -60,6 +60,7 @@ import com.google.mlkit.vision.demo.kotlin.textdetector.TextRecognitionProcessor
 import com.google.mlkit.vision.demo.preference.PreferenceUtils
 import com.google.mlkit.vision.demo.preference.SettingsActivity
 import com.google.mlkit.vision.demo.preference.SettingsActivity.LaunchSource
+import com.google.mlkit.vision.facemesh.FaceMeshDetectorOptions
 import com.google.mlkit.vision.label.custom.CustomImageLabelerOptions
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
@@ -273,6 +274,14 @@ class CameraXLivePreviewActivity :
             val runClassification = PreferenceUtils.shouldPoseDetectionRunClassification(this)
             // Object Detection
             val objectDetectorOptions = PreferenceUtils.getObjectDetectorOptionsForLivePreview(this)
+
+            // Face Mesh
+            val fmoptionsBuilder = FaceMeshDetectorOptions.Builder()
+            if (PreferenceUtils.getFaceMeshUseCase(this) == FaceMeshDetectorOptions.BOUNDING_BOX_ONLY) {
+              fmoptionsBuilder.setUseCase(FaceMeshDetectorOptions.BOUNDING_BOX_ONLY)
+            }
+            val fmOptions = fmoptionsBuilder.build()
+
             DashcamMLProcessor(
               this,
               poseDetectorOptions,
@@ -281,7 +290,8 @@ class CameraXLivePreviewActivity :
               rescaleZ,
               runClassification,
               /* isStreamMode = */ true,
-              objectDetectorOptions
+              objectDetectorOptions,
+              fmOptions
             )
           }
           OBJECT_DETECTION_CUSTOM -> {

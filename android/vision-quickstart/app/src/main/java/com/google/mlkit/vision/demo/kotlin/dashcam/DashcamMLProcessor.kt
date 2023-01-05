@@ -25,6 +25,11 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.kotlin.VisionProcessorBase
 import com.google.mlkit.vision.demo.kotlin.dashcam.poseclassification.PoseClassifierProcessor
+import com.google.mlkit.vision.face.Face
+import com.google.mlkit.vision.facemesh.FaceMesh
+import com.google.mlkit.vision.facemesh.FaceMeshDetection
+import com.google.mlkit.vision.facemesh.FaceMeshDetector
+import com.google.mlkit.vision.facemesh.FaceMeshDetectorOptions
 import com.google.mlkit.vision.objects.DetectedObject
 import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.ObjectDetector
@@ -48,22 +53,29 @@ class DashcamMLProcessor(
   private val rescaleZForVisualization: Boolean,
   private val bPoseClassification: Boolean,
   private val isStreamMode: Boolean,
-  odOptions: ObjectDetectorOptions
+  odOptions: ObjectDetectorOptions,
+  fmOptions: FaceMeshDetectorOptions
 ) : VisionProcessorBase<DashcamMLProcessor.CompoundDtection>(context) {
 
   private val poseDetector: PoseDetector
   private val odDetector: ObjectDetector
+  private val fmDetector: FaceMeshDetector
   private val poseClassificationExecutor: Executor
 
   private var poseClassifierProcessor: PoseClassifierProcessor? = null
 
+
+
   /** Internal class to hold Pose and classification results. */
-  class CompoundDtection(val pose: Pose, val classificationResult: List<String>, val detectedObjects: List<DetectedObject>)
+  class CompoundDtection(val pose: Pose, val classificationResult: List<String>, val detectedObjects: List<DetectedObject>, val detectedFaceMeshs: List<FaceMesh>)
 
   init {
     poseDetector = PoseDetection.getClient(poseOptions)
     odDetector = ObjectDetection.getClient(odOptions)
     poseClassificationExecutor = Executors.newSingleThreadExecutor()
+
+    fmDetector = FaceMeshDetection.getClient(fmOptions)
+
   }
 
   override fun stop() {
@@ -71,6 +83,7 @@ class DashcamMLProcessor(
     try {
       poseDetector.close()
       odDetector.close()
+      fmDetector.close()
     } catch (e: IOException) {
       Log.e(
         TAG,
@@ -84,16 +97,18 @@ class DashcamMLProcessor(
   override fun detectInImage(image: InputImage): Task<CompoundDtection> {
     val task1 = poseDetector.process(image)
     val task2 = odDetector.process(image)
-    return waitTasks(task1, task2)
+    val task3 = fmDetector.process(image)
+    return waitTasks(task1, task2, task3)
   }
 
   override fun detectInImage(image: MlImage): Task<CompoundDtection> {
 
     val task1 = poseDetector.process(image)
     val task2 = odDetector.process(image)
-    return waitTasks(task1, task2)
+    val task3 = fmDetector.process(image)
+    return waitTasks(task1, task2, task3)
   }
-  private fun waitTasks(taskPose: Task<Pose>, taskOD: Task<List<DetectedObject>>) : Task<CompoundDtection>{
+  private fun waitTasks(taskPose: Task<Pose>, taskOD: Task<List<DetectedObject>>, taskFM:Task<List<FaceMesh>>) : Task<CompoundDtection>{
     //to return Task Type for detectInImage and processImageProxy
     val taskCompletionSource = TaskCompletionSource<CompoundDtection>()
 
@@ -114,7 +129,7 @@ class DashcamMLProcessor(
     )
 
 
-    for ((k,t) in mapOf("pose" to taskPose,"OD" to taskOD)){
+    for ((k,t) in mapOf("pose" to taskPose,"OD" to taskOD, "FM" to taskFM)){
       while (!t.isComplete){
         try {
 //          Log.e("xxxxx", k + "... waiting complete")
@@ -124,9 +139,10 @@ class DashcamMLProcessor(
         }
       }
     }
-    val pose = taskPose.getResult() //<Pose>
-    val detectedObjects = taskOD.getResult() //<List<DetectedObject>>
-    taskCompletionSource.setResult(CompoundDtection(pose, classificationResult, detectedObjects))
+    val pose = taskPose.getResult() // <Pose>
+    val detectedObjects = taskOD.getResult() // <List<DetectedObject>>
+    val detectedFacemeshs = taskFM.getResult() // List<FaceMesh>
+    taskCompletionSource.setResult(CompoundDtection(pose, classificationResult, detectedObjects, detectedFacemeshs))
     return taskCompletionSource.getTask()
 
   }
@@ -147,6 +163,10 @@ class DashcamMLProcessor(
     )
     for (detectedObject in results.detectedObjects) {
       graphicOverlay.add(ObjectGraphic(graphicOverlay, detectedObject))
+    }
+
+    for (facemesh in results.detectedFaceMeshs) {
+      graphicOverlay.add(FaceMeshGraphic(graphicOverlay, facemesh))
     }
   }
 
