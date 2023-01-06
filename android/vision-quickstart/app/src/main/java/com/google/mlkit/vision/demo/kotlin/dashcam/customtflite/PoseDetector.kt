@@ -17,7 +17,7 @@ limitations under the License.
 package com.google.mlkit.vision.demo.kotlin.dashcam.customtflite
 
 import android.graphics.Bitmap
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Person
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.Person
 
 interface PoseDetector : AutoCloseable {
 

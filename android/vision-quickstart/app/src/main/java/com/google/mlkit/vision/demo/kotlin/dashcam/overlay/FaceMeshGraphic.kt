@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.mlkit.vision.demo.kotlin.dashcam
+package com.google.mlkit.vision.demo.kotlin.dashcam.overlay
 
 import android.graphics.Canvas
 import android.graphics.Color

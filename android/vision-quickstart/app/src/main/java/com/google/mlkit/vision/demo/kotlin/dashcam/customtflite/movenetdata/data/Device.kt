@@ -14,14 +14,10 @@ limitations under the License.
 ==============================================================================
 */
 
-package com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata
+package com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data
 
-import android.graphics.RectF
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.KeyPoint
-
-data class Person(
-    var id: Int = -1, // default id is -1
-    val keyPoints: List<KeyPoint>,
-    val boundingBox: RectF? = null, // Only MoveNet MultiPose return bounding box.
-    val score: Float
-)
+enum class Device {
+    CPU,
+    NNAPI,
+    GPU
+}

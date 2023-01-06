@@ -14,11 +14,11 @@ limitations under the License.
 ==============================================================================
 */
 
-package com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata
+package org.tensorflow.lite.examples.poseestimation.tracker
 
-data class TorsoAndBodyDistance(
-    val maxTorsoYDistance: Float,
-    val maxTorsoXDistance: Float,
-    val maxBodyYDistance: Float,
-    val maxBodyXDistance: Float
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.Person
+
+data class Track(
+    val person: Person,
+    val lastTimestamp: Long
 )

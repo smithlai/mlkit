@@ -16,7 +16,7 @@ limitations under the License.
 
 package org.tensorflow.lite.examples.poseestimation.tracker
 
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Person
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.Person
 
 
 abstract class AbstractTracker(val config: TrackerConfig) {

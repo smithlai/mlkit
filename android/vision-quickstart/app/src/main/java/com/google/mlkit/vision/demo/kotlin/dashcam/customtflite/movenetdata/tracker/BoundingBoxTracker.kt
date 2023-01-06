@@ -17,7 +17,7 @@ limitations under the License.
 package org.tensorflow.lite.examples.poseestimation.tracker
 
 import androidx.annotation.VisibleForTesting
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Person
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.Person
 import kotlin.math.max
 import kotlin.math.min
 

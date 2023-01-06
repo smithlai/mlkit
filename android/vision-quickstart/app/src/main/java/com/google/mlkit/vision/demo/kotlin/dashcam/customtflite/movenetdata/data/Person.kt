@@ -14,9 +14,13 @@ limitations under the License.
 ==============================================================================
 */
 
-package com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata
+package com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data
 
-import android.graphics.PointF
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.BodyPart
+import android.graphics.RectF
 
-data class KeyPoint(val bodyPart: BodyPart, var coordinate: PointF, val score: Float)
+data class Person(
+    var id: Int = -1, // default id is -1
+    val keyPoints: List<KeyPoint>,
+    val boundingBox: RectF? = null, // Only MoveNet MultiPose return bounding box.
+    val score: Float
+)

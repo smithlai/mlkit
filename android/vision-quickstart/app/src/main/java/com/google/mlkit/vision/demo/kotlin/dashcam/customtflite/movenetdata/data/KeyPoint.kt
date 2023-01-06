@@ -14,11 +14,8 @@ limitations under the License.
 ==============================================================================
 */
 
-package org.tensorflow.lite.examples.poseestimation.tracker
+package com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data
 
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Person
+import android.graphics.PointF
 
-data class Track(
-    val person: Person,
-    val lastTimestamp: Long
-)
+data class KeyPoint(val bodyPart: BodyPart, var coordinate: PointF, val score: Float)

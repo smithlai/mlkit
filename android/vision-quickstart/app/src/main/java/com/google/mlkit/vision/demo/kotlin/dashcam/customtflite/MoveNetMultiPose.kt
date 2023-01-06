@@ -35,10 +35,10 @@ import android.os.SystemClock
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.BodyPart
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Device
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.KeyPoint
-import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Person
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.BodyPart
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.Device
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.KeyPoint
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.Person
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -126,10 +126,7 @@ class MoveNetMultiPose(
         val t = TaskCompletionSource<List<Person>>();
         val job = GlobalScope.launch(Dispatchers.IO) {
             Log.e("bbbbbbbbb", "MoveNet1111111111111")
-//            val mediaimage = MediaImageExtractor.extract(image)
-//            val bitmap:Bitmap = BitmapExtractor.extract(image)
-//            val tensorImage = MlImageAdapter.createTensorImageFrom(image)
-//            val tensorImage = TensorImage.fromBitmap(image.bitmapInternal)
+
             val startMs = SystemClock.elapsedRealtime()
             val personList = estimatePoses(image)
             val endMs = SystemClock.elapsedRealtime()
