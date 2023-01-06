@@ -259,7 +259,7 @@ abstract class VisionProcessorBase<T>(context: Context) : VisionImageProcessor {
     frameStartMs: Long
   ): Task<T> {
     return setUpListener(
-      detectInImage(image),
+      detectInImage(image, originalCameraImage),
       graphicOverlay,
       originalCameraImage,
       shouldShowFps,
@@ -275,7 +275,7 @@ abstract class VisionProcessorBase<T>(context: Context) : VisionImageProcessor {
     frameStartMs: Long
   ): Task<T> {
     return setUpListener(
-      detectInImage(image),
+      detectInImage(image, originalCameraImage),
       graphicOverlay,
       originalCameraImage,
       shouldShowFps,
@@ -394,9 +394,9 @@ abstract class VisionProcessorBase<T>(context: Context) : VisionImageProcessor {
     minDetectorMs = Long.MAX_VALUE
   }
 
-  protected abstract fun detectInImage(image: InputImage): Task<T>
+  protected abstract fun detectInImage(image: InputImage, bmp: Bitmap?): Task<T>
 
-  protected open fun detectInImage(image: MlImage): Task<T> {
+  protected open fun detectInImage(image: MlImage, bmp: Bitmap?): Task<T> {
     return Tasks.forException(
       MlKitException(
         "MlImage is currently not demonstrated for this feature",
@@ -404,7 +404,6 @@ abstract class VisionProcessorBase<T>(context: Context) : VisionImageProcessor {
       )
     )
   }
-
   protected abstract fun onSuccess(results: T, graphicOverlay: GraphicOverlay)
 
   protected abstract fun onFailure(e: Exception)

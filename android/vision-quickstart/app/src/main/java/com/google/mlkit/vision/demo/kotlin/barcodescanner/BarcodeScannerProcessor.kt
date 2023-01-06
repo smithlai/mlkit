@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.kotlin.barcodescanner
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.barcode.BarcodeScanner
@@ -41,7 +42,7 @@ class BarcodeScannerProcessor(context: Context) : VisionProcessorBase<List<Barco
     barcodeScanner.close()
   }
 
-  override fun detectInImage(image: InputImage): Task<List<Barcode>> {
+  override fun detectInImage(image: InputImage, bmp: Bitmap?): Task<List<Barcode>> {
     return barcodeScanner.process(image)
   }
 

@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.kotlin.dashcam
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
@@ -27,6 +28,7 @@ import com.google.mlkit.vision.demo.kotlin.VisionProcessorBase
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.MoveNetMultiPose
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.Type
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Device
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Person
 import com.google.mlkit.vision.demo.kotlin.dashcam.poseclassification.PoseClassifierProcessor
 import com.google.mlkit.vision.facemesh.FaceMesh
 import com.google.mlkit.vision.facemesh.FaceMeshDetection
@@ -83,10 +85,9 @@ class DashcamMLProcessor(
 
     // https://developers.google.com/ml-kit/vision/face-mesh-detection/concepts
     fmDetector = FaceMeshDetection.getClient(fmOptions)
-//    if (device == Device.GPU) {
-//      showToast(getString(R.string.tfe_pe_gpu_error))
-//    }
-//    showTracker(true)
+
+    // This movement copied from:
+    // https://github.com/smithlai/tensorflow-examples/tree/master/lite/examples/pose_estimation
     movenetDetector = MoveNetMultiPose.create(
       context,
       Device.GPU,
@@ -112,24 +113,31 @@ class DashcamMLProcessor(
 
   }
 
-  override fun detectInImage(image: InputImage): Task<CompoundDtection> {
+  override fun detectInImage(image: InputImage, bmp: Bitmap?): Task<CompoundDtection> {
+    val task1 = poseDetector.process(image)
+    val task2 = odDetector.process(image)
+    val task3 = fmDetector.process(image)
+    var task4: Task<List<Person>>? = null
+    bmp?.let{
+//      task4 = movenetDetector.process(bmp)
+    }
+    return waitTasks(task1, task2, task3, task4)
+  }
+
+  override fun detectInImage(image: MlImage, bmp: Bitmap?): Task<CompoundDtection> {
+
     val task1 = poseDetector.process(image)
     val task2 = odDetector.process(image)
     val task3 = fmDetector.process(image)
 
-    val tensorImage = TensorImage.fromBitmap(image.bitmapInternal)
-    return waitTasks(task1, task2, task3)
-  }
+    var task4: Task<List<Person>>? = null
+    bmp?.let{
+      task4 = movenetDetector.process(bmp)
+    }
 
-  override fun detectInImage(image: MlImage): Task<CompoundDtection> {
-
-    val task1 = poseDetector.process(image)
-    val task2 = odDetector.process(image)
-    val task3 = fmDetector.process(image)
-    val tensorImage = MlImageAdapter.createTensorImageFrom(image)
-    return waitTasks(task1, task2, task3)
+    return waitTasks(task1, task2, task3, task4)
   }
-  private fun waitTasks(taskPose: Task<Pose>, taskOD: Task<List<DetectedObject>>, taskFM:Task<List<FaceMesh>>) : Task<CompoundDtection>{
+  private fun waitTasks(taskPose: Task<Pose>, taskOD: Task<List<DetectedObject>>, taskFM:Task<List<FaceMesh>>, task4: Task<List<Person>>?) : Task<CompoundDtection>{
     //to return Task Type for detectInImage and processImageProxy
     val taskCompletionSource = TaskCompletionSource<CompoundDtection>()
 
@@ -149,12 +157,17 @@ class DashcamMLProcessor(
       }
     )
 
+    var taskmap = mutableMapOf<String, Task<Any>>()
+    taskPose?.let { taskmap.put("pose", it as Task<Any>) }
+    taskOD?.let { taskmap.put("OD", it as Task<Any>) }
+    taskFM?.let { taskmap.put("FM", it as Task<Any>) }
+    task4?.let { taskmap.put("task4", it as Task<Any>) }
 
-    for ((k,t) in mapOf("pose" to taskPose,"OD" to taskOD, "FM" to taskFM)){
+    for ((k,t) in taskmap){
       while (!t.isComplete){
         try {
 //          Log.e("xxxxx", k + "... waiting complete")
-          Thread.sleep(5)
+//          Thread.sleep(5)
         }catch (e: Exception){
 //          taskCompletionSource.setException(e)
         }
@@ -163,6 +176,7 @@ class DashcamMLProcessor(
     val pose = taskPose.getResult() // <Pose>
     val detectedObjects = taskOD.getResult() // <List<DetectedObject>>
     val detectedFacemeshs = taskFM.getResult() // List<FaceMesh>
+    val personlist = task4?.getResult() // List<Person>
     taskCompletionSource.setResult(CompoundDtection(pose, classificationResult, detectedObjects, detectedFacemeshs))
     return taskCompletionSource.getTask()
 

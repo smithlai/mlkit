@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.kotlin.labeldetector
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
@@ -46,7 +47,7 @@ class LabelDetectorProcessor(context: Context, options: ImageLabelerOptionsBase)
     }
   }
 
-  override fun detectInImage(image: InputImage): Task<List<ImageLabel>> {
+  override fun detectInImage(image: InputImage, bmp: Bitmap?): Task<List<ImageLabel>> {
     return imageLabeler.process(image)
   }
 

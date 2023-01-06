@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.kotlin.textdetector
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
@@ -44,7 +45,7 @@ class TextRecognitionProcessor(
     textRecognizer.close()
   }
 
-  override fun detectInImage(image: InputImage): Task<Text> {
+  override fun detectInImage(image: InputImage, bmp: Bitmap?): Task<Text> {
     return textRecognizer.process(image)
   }
 

@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.kotlin.posedetector
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.android.odml.image.MlImage
@@ -61,7 +62,7 @@ class PoseDetectorProcessor(
     detector.close()
   }
 
-  override fun detectInImage(image: InputImage): Task<PoseWithClassification> {
+  override fun detectInImage(image: InputImage, bmp: Bitmap?): Task<PoseWithClassification> {
     return detector
       .process(image)
       .continueWith(
@@ -80,7 +81,7 @@ class PoseDetectorProcessor(
       )
   }
 
-  override fun detectInImage(image: MlImage): Task<PoseWithClassification> {
+  override fun detectInImage(image: MlImage, bmp: Bitmap?): Task<PoseWithClassification> {
     return detector
       .process(image)
       .continueWith(

@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.kotlin.segmenter
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
@@ -55,7 +56,7 @@ class SegmenterProcessor :
     Log.d(TAG, "SegmenterProcessor created with option: " + options)
   }
 
-  override fun detectInImage(image: InputImage): Task<SegmentationMask> {
+  override fun detectInImage(image: InputImage, bmp: Bitmap?): Task<SegmentationMask> {
     return segmenter.process(image)
   }
 

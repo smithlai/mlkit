@@ -16,6 +16,7 @@
 package com.google.mlkit.vision.demo.kotlin.facemeshdetector
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.android.odml.image.MlImage
@@ -47,7 +48,7 @@ class FaceMeshDetectorProcessor(context: Context) :
     detector.close()
   }
 
-  override fun detectInImage(image: InputImage): Task<List<FaceMesh>> {
+  override fun detectInImage(image: InputImage, bmp: Bitmap?): Task<List<FaceMesh>> {
     return detector.process(image)
   }
 

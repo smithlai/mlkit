@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.kotlin.objectdetector
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
@@ -47,7 +48,7 @@ class ObjectDetectorProcessor(context: Context, options: ObjectDetectorOptionsBa
     }
   }
 
-  override fun detectInImage(image: InputImage): Task<List<DetectedObject>> {
+  override fun detectInImage(image: InputImage, bmp: Bitmap?): Task<List<DetectedObject>> {
     return detector.process(image)
   }
 

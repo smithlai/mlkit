@@ -14,6 +14,17 @@ limitations under the License.
 ==============================================================================
 */
 
+/*
+* https://ithelp.ithome.com.tw/articles/10276714
+*
+* MoveNet：最先進的姿勢估計模型有兩種版本：Lighting 和 Thunder。
+* PoseNet：2017 年發布的上一代姿態估計模型。
+* MoveNet 有兩種版本：
+* MoveNet.Lightning 比 Thunder 版本更小、更快但準確度較低。它可以在現代智能手機上實時運行。
+* MoveNet.Thunder 是更準確的版本，但也比 Lightning 更大更慢。它對於需要更高準確性的用例很有用。
+* MoveNet 在各種數據集上的表現都優於 PoseNet，尤其是在帶有健身動作圖像的圖像中。因此，我們建議在 PoseNet 上使用 MoveNet。
+*
+* */
 package com.google.mlkit.vision.demo.kotlin.dashcam.customtflite
 
 import android.content.Context
@@ -21,13 +32,21 @@ import android.graphics.Bitmap
 import android.graphics.PointF
 import android.graphics.RectF
 import android.os.SystemClock
-import org.tensorflow.lite.DataType
-import org.tensorflow.lite.Interpreter
+import android.util.Log
+import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.BodyPart
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Device
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.KeyPoint
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.posedata.Person
-import org.tensorflow.lite.examples.poseestimation.tracker.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.examples.poseestimation.tracker.AbstractTracker
+import org.tensorflow.lite.examples.poseestimation.tracker.BoundingBoxTracker
+import org.tensorflow.lite.examples.poseestimation.tracker.KeyPointsTracker
 import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageOperator
@@ -101,6 +120,24 @@ class MoveNetMultiPose(
                 ), type, gpuDelegate
             )
         }
+    }
+
+    fun process(image: Bitmap): Task<List<Person>> {
+        val t = TaskCompletionSource<List<Person>>();
+        val job = GlobalScope.launch(Dispatchers.IO) {
+            Log.e("bbbbbbbbb", "MoveNet1111111111111")
+//            val mediaimage = MediaImageExtractor.extract(image)
+//            val bitmap:Bitmap = BitmapExtractor.extract(image)
+//            val tensorImage = MlImageAdapter.createTensorImageFrom(image)
+//            val tensorImage = TensorImage.fromBitmap(image.bitmapInternal)
+            val startMs = SystemClock.elapsedRealtime()
+            val personList = estimatePoses(image)
+            val endMs = SystemClock.elapsedRealtime()
+            Log.e("bbbbbbbbb", "MoveNet2222222222222:" + (endMs-startMs)+ " ms, " + personList.toString())
+
+            t.setResult(personList)
+        }
+        return t.task
     }
 
     /**
