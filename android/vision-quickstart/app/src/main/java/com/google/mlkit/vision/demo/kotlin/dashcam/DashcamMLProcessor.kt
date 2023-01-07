@@ -26,10 +26,12 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.kotlin.VisionProcessorBase
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.MoveNetMultiPose
+import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.TrackerType
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.Type
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.Device
 import com.google.mlkit.vision.demo.kotlin.dashcam.customtflite.movenetdata.data.Person
 import com.google.mlkit.vision.demo.kotlin.dashcam.overlay.FaceMeshGraphic
+import com.google.mlkit.vision.demo.kotlin.dashcam.overlay.MoveNetGraphic
 import com.google.mlkit.vision.demo.kotlin.dashcam.overlay.ObjectGraphic
 import com.google.mlkit.vision.demo.kotlin.dashcam.overlay.PoseGraphic
 import com.google.mlkit.vision.demo.kotlin.dashcam.poseclassification.PoseClassifierProcessor
@@ -74,7 +76,7 @@ class DashcamMLProcessor(
 
 
   /** Internal class to hold Pose and classification results. */
-  class CompoundDtection(val pose: Pose, val classificationResult: List<String>, val detectedObjects: List<DetectedObject>, val detectedFaceMeshs: List<FaceMesh>, val personlist:List<Person>?)
+  class CompoundDtection(val pose: Pose?, val classificationResult: List<String>?, val detectedObjects: List<DetectedObject>?, val detectedFaceMeshs: List<FaceMesh>?, val personlist:List<Person>?)
 
   init {
     // (MediaPipe Blazepose) https://developers.google.com/ml-kit/vision/pose-detection#under_the_hood
@@ -91,8 +93,9 @@ class DashcamMLProcessor(
       context,
       Device.GPU,
       Type.Dynamic
-    )
-
+    ).apply {
+      setTracker(TrackerType.BOUNDING_BOX)
+    }
   }
 
   override fun stop() {
@@ -129,23 +132,27 @@ class DashcamMLProcessor(
 //    val bitmap:Bitmap = BitmapExtractor.extract(image)
 //    val tensorImage = MlImageAdapter.createTensorImageFrom(image)
 //    val tensorImage = TensorImage.fromBitmap(image.bitmapInternal)
-    val task1 = poseDetector.process(image)
-    val task2 = odDetector.process(image)
-    val task3 = fmDetector.process(image)
-
+    var task1: Task<Pose>? = null
+    var task2: Task<List<DetectedObject>>? = null
+    var task3: Task<List<FaceMesh>>? = null
     var task4: Task<List<Person>>? = null
+
+    task1 = poseDetector.process(image)
+    task2 = odDetector.process(image)
+    task3 = fmDetector.process(image)
+
     bmp?.let{
-      task4 = movenetDetector.process(bmp)
+      task4 = movenetDetector.process(it)
     }
 
     return waitTasks(task1, task2, task3, task4)
   }
-  private fun waitTasks(taskPose: Task<Pose>, taskOD: Task<List<DetectedObject>>, taskFM:Task<List<FaceMesh>>, task4: Task<List<Person>>?) : Task<CompoundDtection>{
+  private fun waitTasks(taskPose: Task<Pose>?, taskOD: Task<List<DetectedObject>>?, taskFM:Task<List<FaceMesh>>?, task4: Task<List<Person>>?) : Task<CompoundDtection>{
     //to return Task Type for detectInImage and processImageProxy
     val taskCompletionSource = TaskCompletionSource<CompoundDtection>()
 
     var classificationResult: List<String> = ArrayList()
-    taskPose.continueWith(
+    taskPose?.continueWith(
       poseClassificationExecutor,
       { task ->
         val pose = task.getResult()
@@ -168,17 +175,13 @@ class DashcamMLProcessor(
 
     for ((k,t) in taskmap){
       while (!t.isComplete){
-        try {
-//          Log.e("xxxxx", k + "... waiting complete")
-//          Thread.sleep(5)
-        }catch (e: Exception){
-//          taskCompletionSource.setException(e)
-        }
+        //do nothing
       }
+      Log.e("xxxxx", k + "... waiting complete")
     }
-    val pose = taskPose.getResult() // <Pose>
-    val detectedObjects = taskOD.getResult() // <List<DetectedObject>>
-    val detectedFacemeshs = taskFM.getResult() // List<FaceMesh>
+    val pose = taskPose?.getResult() // <Pose>
+    val detectedObjects = taskOD?.getResult() // <List<DetectedObject>>
+    val detectedFacemeshs = taskFM?.getResult() // List<FaceMesh>
     var personlist:List<Person>? = null
     task4?.let {
       personlist = task4?.getResult() // List<Person>
@@ -192,22 +195,33 @@ class DashcamMLProcessor(
     results: CompoundDtection,
     graphicOverlay: GraphicOverlay
   ) {
-    graphicOverlay.add(
-      PoseGraphic(
-        graphicOverlay,
-        results.pose,
-        showInFrameLikelihood,
-        visualizeZ,
-        rescaleZForVisualization,
-        results.classificationResult
-      )
-    )
-    for (detectedObject in results.detectedObjects) {
-      graphicOverlay.add(ObjectGraphic(graphicOverlay, detectedObject))
+    if ((null != results.pose) && (null != results.classificationResult)) {
+      results.pose?.let {
+        graphicOverlay.add(
+          PoseGraphic(
+            graphicOverlay,
+            results.pose,
+            showInFrameLikelihood,
+            visualizeZ,
+            rescaleZForVisualization,
+            results.classificationResult
+          )
+        )
+      }
     }
-
-    for (facemesh in results.detectedFaceMeshs) {
-      graphicOverlay.add(FaceMeshGraphic(graphicOverlay, facemesh))
+    results.detectedObjects?.let {
+      Log.e("results.detectedObjects", it.toString())
+      for (detectedObject in it) {
+        graphicOverlay.add(ObjectGraphic(graphicOverlay, detectedObject))
+      }
+    }
+    results.detectedFaceMeshs?.let {
+      for (facemesh in it) {
+        graphicOverlay.add(FaceMeshGraphic(graphicOverlay, facemesh))
+      }
+    }
+    results.personlist?.let{
+      graphicOverlay.add(MoveNetGraphic(graphicOverlay, it))
     }
   }
 

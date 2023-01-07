@@ -74,6 +74,7 @@ class MoveNetMultiPose(
     private var tracker: AbstractTracker? = null
 
     companion object {
+        public  const val TAG = "MovenetMultiPose"
         private const val DYNAMIC_MODEL_TARGET_INPUT_SIZE = 256
         private const val SHAPE_MULTIPLE = 32.0
         private const val DETECTION_THRESHOLD = 0.11
@@ -125,12 +126,13 @@ class MoveNetMultiPose(
     fun process(image: Bitmap): Task<List<Person>> {
         val t = TaskCompletionSource<List<Person>>();
         val job = GlobalScope.launch(Dispatchers.IO) {
-            Log.e("bbbbbbbbb", "MoveNet1111111111111")
-
             val startMs = SystemClock.elapsedRealtime()
+              // TODO: if I sleep too long here, the object detection model will be affected (cannot detect anything).
             val personList = estimatePoses(image)
+//            Thread.sleep(300L)
+//            val personList = listOf<Person>()
             val endMs = SystemClock.elapsedRealtime()
-            Log.e("bbbbbbbbb", "MoveNet2222222222222:" + (endMs-startMs)+ " ms, " + personList.toString())
+            Log.e(TAG, "MoveNet Inference:" + (endMs-startMs)+ " ms")
 
             t.setResult(personList)
         }
@@ -173,32 +175,46 @@ class MoveNetMultiPose(
 
     /**
      * Prepare input image for detection
+     * https://storage.googleapis.com/movenet/MoveNet.MultiPose%20Model%20Card.pdf
+     * """
+     * H and W need to be a multiple of 32 and can be determined at run time.
+     * A recommended way to prepare the input image tensor is to resize the image such
+     * that its larger side is equal to 256 pixels while keeping the image’s original aspect ratio.
+     * """
      */
     private fun processInputTensor(bitmap: Bitmap): TensorImage {
         imageWidth = bitmap.width
         imageHeight = bitmap.height
 
         // if model type is fixed. get input size from input shape.
+        // else, set to 256
         val inputSizeHeight =
             if (type == Type.Dynamic) DYNAMIC_MODEL_TARGET_INPUT_SIZE else inputShape[1]
         val inputSizeWidth =
             if (type == Type.Dynamic) DYNAMIC_MODEL_TARGET_INPUT_SIZE else inputShape[2]
 
+
+        // 1. resizeOp: scale with max size 256 and keep the original ratio (but )
         val resizeOp: ImageOperator
         if (imageWidth > imageHeight) {
             val scale = inputSizeWidth / imageWidth.toFloat()
             targetWidth = inputSizeWidth
             scaleHeight = ceil(imageHeight * scale).toInt()
-            targetHeight = (ceil((scaleHeight / SHAPE_MULTIPLE)) * SHAPE_MULTIPLE).toInt()
+
             resizeOp = ResizeOp(scaleHeight, targetWidth, ResizeOp.ResizeMethod.BILINEAR)
+            targetHeight = (ceil((scaleHeight / SHAPE_MULTIPLE)) * SHAPE_MULTIPLE).toInt()
+            //resizeOp = ResizeOp(targetHeight, targetWidth, ResizeOp.ResizeMethod.BILINEAR)
         } else {
             val scale = inputSizeHeight / imageHeight.toFloat()
             targetHeight = inputSizeHeight
             scaleWidth = ceil(imageWidth * scale).toInt()
-            targetWidth = (ceil((scaleWidth / SHAPE_MULTIPLE)) * SHAPE_MULTIPLE).toInt()
+
             resizeOp = ResizeOp(targetHeight, scaleWidth, ResizeOp.ResizeMethod.BILINEAR)
+            targetWidth = (ceil((scaleWidth / SHAPE_MULTIPLE)) * SHAPE_MULTIPLE).toInt()
+            //resizeOp = ResizeOp(targetHeight, targetWidth, ResizeOp.ResizeMethod.BILINEAR)
         }
 
+        // 2. resizeWithCropOrPad: Resize bitmap to max size 256*256
         val resizeWithCropOrPad = if (type == Type.Dynamic) ResizeWithCropOrPadOp(
             targetHeight,
             targetWidth
@@ -248,6 +264,7 @@ class MoveNetMultiPose(
         if (persons.isEmpty()) return emptyList()
 
         if (tracker == null) {
+            // no tracker, just resize keypoints
             persons.forEach {
                 it.keyPoints.forEach { key ->
                     key.coordinate = resizeKeypoint(key.coordinate.x, key.coordinate.y)
@@ -305,6 +322,7 @@ class MoveNetMultiPose(
      */
     override fun estimatePoses(bitmap: Bitmap): List<Person> {
         val inferenceStartTimeNanos = SystemClock.elapsedRealtimeNanos()
+//        val tmp_bmp = bitmap.copy(bitmap.getConfig(), true);
         val inputTensor = processInputTensor(bitmap)
         val outputTensor = TensorBuffer.createFixedSize(outputShape, DataType.FLOAT32)
 
