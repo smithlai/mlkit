@@ -91,7 +91,7 @@ class DashcamMLProcessor(
     // https://github.com/smithlai/tensorflow-examples/tree/master/lite/examples/pose_estimation
     movenetDetector = MoveNetMultiPose.create(
       context,
-      Device.GPU,
+      Device.NNAPI,
       Type.Dynamic
     ).apply {
       setTracker(TrackerType.BOUNDING_BOX)
@@ -173,19 +173,37 @@ class DashcamMLProcessor(
     taskFM?.let { taskmap.put("FM", it as Task<Any>) }
     task4?.let { taskmap.put("task4", it as Task<Any>) }
 
-    for ((k,t) in taskmap){
-      while (!t.isComplete){
-        //do nothing
-      }
-      Log.e("xxxxx", k + "... waiting complete")
-    }
-    val pose = taskPose?.getResult() // <Pose>
-    val detectedObjects = taskOD?.getResult() // <List<DetectedObject>>
-    val detectedFacemeshs = taskFM?.getResult() // List<FaceMesh>
+    var pose:Pose? = null
+    var detectedObjects:List<DetectedObject>? = null
+    var detectedFacemeshs:List<FaceMesh>? = null
     var personlist:List<Person>? = null
-    task4?.let {
-      personlist = task4?.getResult() // List<Person>
+    while (taskmap.size > 0){
+//      Log.e("xxxxx", "1taskmap.size:" + taskmap.size)
+      val iterator: MutableIterator<Map.Entry<String, Task<Any>>> = taskmap.entries.iterator()
+      while (iterator.hasNext()) {
+        val entry = iterator.next()
+        val k = entry.key
+        val t = entry.value
+        if (t.isComplete) {
+          when (k) {
+            "pose" -> pose = taskPose?.getResult() // <Pose>
+            "OD" -> detectedObjects = taskOD?.getResult() // <List<DetectedObject>>
+            "FM" -> detectedFacemeshs = taskFM?.getResult() // List<FaceMesh>
+            "task4" -> task4?.let {
+              personlist = it.getResult() // List<Person>
+            }
+          }
+          iterator.remove()
+//          Log.e("xxxxx", k + "... complete, taskmap.size:" + taskmap.size)
+        }
+      }
     }
+//    Log.e("xxxxx", "2taskmap.size:" + 0)
+
+
+
+
+
     taskCompletionSource.setResult(CompoundDtection(pose, classificationResult, detectedObjects, detectedFacemeshs, personlist))
     return taskCompletionSource.getTask()
 
